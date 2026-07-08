@@ -34,10 +34,9 @@ proc findChecksum(indexName: string): JsonNode =
   if vend < 0: return result
   result = %text[vstart ..< vend]
 
-proc cmd*(params: seq[string]) =
+proc run*(params: seq[string]): JsonNode =
   if params.len < 1:
-    stderr.writeLine "usage: niflens index <file>"
-    quit 1
+    return errNode("usage: niflens index <file>", 1)
   let file = params[0]
 
   # Derive the `.s.idx.nif` name unless we were handed one directly.
@@ -46,8 +45,7 @@ proc cmd*(params: seq[string]) =
     else: changeModuleExt(file, ".s.idx.nif")
 
   if not fileExists(indexName):
-    stderr.writeLine "niflens: no such file: " & indexName
-    quit 2
+    return errNode("no such file: " & indexName, 2)
 
   let empty = %*{"checksum": newJNull(),
                  "exports": newJArray(), "converters": newJArray()}
@@ -56,8 +54,7 @@ proc cmd*(params: seq[string]) =
   try:
     idx = readIndex(indexName)
   except CatchableError, Defect:
-    echo empty
-    return
+    return empty
 
   let checksum = findChecksum(indexName)
 
@@ -88,4 +85,6 @@ proc cmd*(params: seq[string]) =
   except CatchableError, Defect:
     convArr = newJArray()
 
-  echo %*{"checksum": checksum, "exports": exportsArr, "converters": convArr}
+  return %*{"checksum": checksum, "exports": exportsArr, "converters": convArr}
+
+proc cmd*(params: seq[string]) = emit(run(params))

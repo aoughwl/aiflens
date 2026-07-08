@@ -22,15 +22,13 @@ proc truncateSnippet(s: string): string =
   else:
     result = lines[0 ..< MaxLines].join("\n") & "\n ..."
 
-proc cmd*(params: seq[string]) =
+proc run*(params: seq[string]): JsonNode =
   ## outline: top-level declarations of the root `(stmts …)`.
   if params.len < 1:
-    stderr.writeLine "usage: niflens outline <file>"
-    quit 1
+    return errNode("usage: niflens outline <file>", 1)
   let path = params[0]
   if not fileExists(path):
-    stderr.writeLine "niflens: no such file: " & path
-    quit 2
+    return errNode("no such file: " & path, 2)
   var arr = newJArray()
   try:
     var buf = loadBuf(path)
@@ -41,13 +39,20 @@ proc cmd*(params: seq[string]) =
         if c.kind == ParLe:
           let declTok = c.load
           var son = firstSon(c)
-          if son.kind == SymbolDef:
+          # A decl's name is its first child: SymbolDef/Symbol post-sem
+          # (`.s.nif`), or a plain Ident pre-sem (`.p.nif`).
+          if son.kind in {SymbolDef, Symbol, Ident}:
             let symTok = son.load
-            let sym = symName(symTok)
+            var sym, name: string
+            if son.kind == Ident:
+              sym = pool.strings[symTok.litId]
+              name = sym
+            else:
+              sym = symName(symTok)
+              name = baseName(sym)
+              if name.len == 0: name = sym
             var node = %*{
-              "tag": tagName(declTok),
-              "name": baseName(sym),
-              "sym": sym
+              "tag": tagName(declTok), "name": name, "sym": sym
             }
             addPos(node, symTok)
             arr.add node
@@ -57,18 +62,18 @@ proc cmd*(params: seq[string]) =
     endRead buf
   except CatchableError:
     arr = newJArray()
-  echo %*{"tags": arr}
+  return %*{"tags": arr}
 
-proc cmdQuery*(params: seq[string]) =
+proc cmd*(params: seq[string]) = emit(run(params))
+
+proc runQuery*(params: seq[string]): JsonNode =
   ## query: subtrees whose head tag OR contained SymbolDef matches `needle`.
   if params.len < 2:
-    stderr.writeLine "usage: niflens query <file> <needle>"
-    quit 1
+    return errNode("usage: niflens query <file> <needle>", 1)
   let path = params[0]
   let needle = params[1]
   if not fileExists(path):
-    stderr.writeLine "niflens: no such file: " & path
-    quit 2
+    return errNode("no such file: " & path, 2)
   var arr = newJArray()
   try:
     var buf = loadBuf(path)
@@ -103,4 +108,6 @@ proc cmdQuery*(params: seq[string]) =
     endRead buf
   except CatchableError:
     arr = newJArray()
-  echo %*{"matches": arr}
+  return %*{"matches": arr}
+
+proc cmdQuery*(params: seq[string]) = emit(runQuery(params))

@@ -6,15 +6,13 @@ import std / [os, json, strutils]
 include "nifprelude"
 import core
 
-proc cmd*(params: seq[string]) =
+proc run*(params: seq[string]): JsonNode =
   if params.len < 1:
-    stderr.writeLine "usage: niflens decls <file.s.nif> [symbol]"
-    quit 1
+    return errNode("usage: niflens decls <file.s.nif> [symbol]", 1)
   let path = params[0]
   let wanted = if params.len >= 2: params[1] else: ""
   if not fileExists(path):
-    stderr.writeLine "niflens: no such file: " & path
-    quit 2
+    return errNode("no such file: " & path, 2)
   let buf = loadBuf(path)
   var tagStack: seq[string] = @[]
   var arr = newJArray()
@@ -39,4 +37,6 @@ proc cmd*(params: seq[string]) =
       arr.add node
     else:
       discard
-  echo arr
+  return arr
+
+proc cmd*(params: seq[string]) = emit(run(params))

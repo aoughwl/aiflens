@@ -29,3 +29,16 @@ proc addPos*(node: JsonNode; tok: PackedToken) =
     node["file"] = %pool.files[i.file]
     node["line"] = %i.line.int
     node["col"] = %i.col.int
+
+proc errNode*(msg: string; code = 1): JsonNode =
+  ## The error shape a `run` returns instead of quitting (so `serve` can keep
+  ## running). `code` becomes the CLI exit code via `emit`.
+  %*{"error": msg, "code": code}
+
+proc emit*(r: JsonNode) =
+  ## CLI wrapper for a command's `run` result: on an error node, write the
+  ## message to stderr and quit with its code; otherwise print the JSON.
+  if r.kind == JObject and r.hasKey("error"):
+    stderr.writeLine r["error"].getStr
+    quit r{"code"}.getInt(1)
+  echo r

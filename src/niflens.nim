@@ -16,12 +16,13 @@
 ##   version
 
 import std / os
-import niflenspkg / [decls, render, index, outline]
+import niflenspkg / [decls, render, index, outline, serve]
 
-const Version = "0.2.0"
+const Version = "0.3.0"
 
 proc usage() =
-  stderr.writeLine "usage: niflens <decls|render|index|outline|query|version> [args]"
+  stderr.writeLine "usage: niflens " &
+    "<decls|render|index|outline|query|serve|version> [args]"
 
 proc main =
   if paramCount() < 1:
@@ -35,6 +36,7 @@ proc main =
   of "index": index.cmd(rest)
   of "outline": outline.cmd(rest)
   of "query": outline.cmdQuery(rest)
+  of "serve": serve()
   else:
     stderr.writeLine "niflens: unknown subcommand: " & paramStr(1)
     usage(); quit 1

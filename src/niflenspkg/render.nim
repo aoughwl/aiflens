@@ -250,15 +250,13 @@ proc truncate(s: string): string =
 # Command entry point
 # --------------------------------------------------------------------------
 
-proc cmd*(params: seq[string]) =
+proc run*(params: seq[string]): JsonNode =
   if params.len < 1:
-    stderr.writeLine "usage: niflens render <file.nif> [needle]"
-    quit 1
+    return errNode("usage: niflens render <file.nif> [needle]", 1)
   let path = params[0]
   let needle = if params.len >= 2: params[1] else: ""
   if not fileExists(path):
-    stderr.writeLine "niflens: no such file: " & path
-    quit 2
+    return errNode("no such file: " & path, 2)
 
   var arr = newJArray()
   try:
@@ -268,9 +266,13 @@ proc cmd*(params: seq[string]) =
     if root != nil and not root.isAtom:
       for c in root.children:
         if c.isAtom or c.children.len == 0: continue
-        if not c.children[0].isSymDef: continue
-        let sym = c.children[0].sym
-        let name = baseName(sym)
+        let f0 = c.children[0]
+        if not f0.isAtom: continue
+        # name token: SymbolDef (post-sem, .s.nif) or Ident (pre-sem, .p.nif).
+        let sym = if f0.isSymDef: f0.sym else: f0.atom
+        if sym.len == 0 or sym == ".": continue
+        var name = baseName(sym)
+        if name.len == 0: name = demangle(f0.atom)
         let kind = c.tag
         if needle.len > 0 and not (sym == needle or sym.startsWith(needle) or
                                    kind == needle or name == needle):
@@ -282,4 +284,6 @@ proc cmd*(params: seq[string]) =
   except CatchableError:
     arr = newJArray()
 
-  echo %*{"nodes": arr}
+  return %*{"nodes": arr}
+
+proc cmd*(params: seq[string]) = emit(run(params))
