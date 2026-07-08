@@ -57,13 +57,21 @@ full symId (exact / prefix) or human base name.
 [{"sym":"addup.0.mwsmvs","name":"addup","kind":"proc","file":"m.nim","line":1,"col":5}]
 ```
 
+## Commands
+
+- `decls`   — declaration sites (SymbolDef walk).
+- `render`  — pseudo-Nim per top-level decl.
+- `index`   — `.s.idx.nif` contents via `nifindexes` (checksum, converters, re-exports).
+- `outline` — top-level declarations with positions.
+- `query`   — subtrees matching a needle → canonical NIF snippet.
+- `serve`   — line-oriented stdio daemon (one process across requests).
+
 ## Roadmap
 
-Commands are added as the plugin migrates operations off its fallback parser,
-roughly in order of correctness upside: `decls` (done) → index reads via
-`nifindexes` (`.s.idx.nif`) → `render` (semantic pseudo-Nim) → `outline` /
-`query` → a persistent `serve` (stdio) daemon holding parsed indexes in memory,
-shared with the LSP.
+Next: have `serve` cache parsed `TokenBuf`s of hot modules (e.g. `system.s.nif`)
+in memory across requests, and extract a shared NIF core module that a Nimony
+LSP links directly (rather than shelling out) — the persistent-index daemon that
+is the structural perf win for both consumers.
 
 ## License
 
